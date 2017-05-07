@@ -10,12 +10,13 @@ Send a POST request::
     curl -d "foo=bar&bin=baz" http://localhost
 """
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import urllib.parse, json
+import json
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer, TfidfTransformer
 from sklearn.externals import joblib
 import keras
 from sklearn import preprocessing
+from urllib.parse import urlparse, parse_qs, unquote
 
 Classification = ["world","politics","sport","football","culture","business",
                   "lifeandstyle", "fashion","environment","technology","travel"]
@@ -24,9 +25,11 @@ le.fit(Classification)
 tfidfvectorizer = joblib.load('../tfidf_vectorizer.pkl')
 model = keras.models.load_model('../news_title_cls85.h5')
 def predictclass(text):
-    result =  model.predict(tfidfvectorizer.transform(test_text).toarray())
-    label = le.inverse_transform(np.argsort(result)[0][::-1])
-    return result, label
+    result =  model.predict(tfidfvectorizer.transform(text).toarray())
+    porb = np.argsort(result)[0][::-1]
+    label = le.inverse_transform(porb)
+    return label, result[0][porb]
+
 class S(BaseHTTPRequestHandler):
     def _set_headers(self):
         self.send_response(200)
@@ -35,10 +38,19 @@ class S(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self._set_headers()
-        parsed_path = parse.parse(self.path)
-        print(parsed_path)
-        #result, label = predictclass(text)
-        self.wfile.write("<html><body><h1>hi!</h1></body></html>")
+        url = unquote(self.path)
+
+        title = parse_qs(urlparse(url).query)
+        if title != {}:
+            print(title['title'])
+            label, porb = predictclass(title['title'])
+            print(label[:3])
+            output = ''
+            for i in range(0,11):
+                output += '<tr><td>%s</td><td>%.5f</td></tr>'%(label[i], porb[i])
+            html = '<html><body><table border="1" style="font-size:48px;font-family:serif;" align="left">%s</table></body></html>'%(output)
+
+            self.wfile.write(html.encode())
 
     def do_HEAD(self):
         self._set_headers()
