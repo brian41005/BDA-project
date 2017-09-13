@@ -18,17 +18,22 @@ import keras
 from sklearn import preprocessing
 from urllib.parse import urlparse, parse_qs, unquote
 
-Classification = ["world","politics","sport","football","culture","business",
-                  "lifeandstyle", "fashion","environment","technology","travel"]
+Classification = ["world", "politics", "sport", "football", "culture", "business",
+                  "lifeandstyle", "fashion", "environment", "technology", "travel"]
 le = preprocessing.LabelEncoder()
 le.fit(Classification)
-tfidfvectorizer = joblib.load('../tfidf_vectorizer.pkl')
-model = keras.models.load_model('../news_title_cls85.h5')
+tfidfvectorizer = joblib.load(
+    '../categorical classification/tfidf_vectorizer.pkl')
+model = keras.models.load_model(
+    '../categorical classification/news_title_cls85.h5')
+
+
 def predictclass(text):
-    result =  model.predict(tfidfvectorizer.transform(text).toarray())
+    result = model.predict(tfidfvectorizer.transform(text).toarray())
     porb = np.argsort(result)[0][::-1]
     label = le.inverse_transform(porb)
     return label, result[0][porb]
+
 
 class S(BaseHTTPRequestHandler):
     def _set_headers(self):
@@ -46,9 +51,11 @@ class S(BaseHTTPRequestHandler):
             label, porb = predictclass(title['title'])
             print(label[:3])
             output = ''
-            for i in range(0,11):
-                output += '<tr><td>%s</td><td>%.5f</td></tr>'%(label[i], porb[i])
-            html = '<html><body><table border="1" style="font-size:48px;font-family:serif;" align="left">%s</table></body></html>'%(output)
+            for i in range(0, 11):
+                output += '<tr><td>%s</td><td>%.5f</td></tr>' % (
+                    label[i], porb[i])
+            html = '<html><body><table border="1" style="font-size:48px;font-family:serif;" align="left">%s</table></body></html>' % (
+                output)
 
             self.wfile.write(html.encode())
 
@@ -60,11 +67,13 @@ class S(BaseHTTPRequestHandler):
         self._set_headers()
         self.wfile.write("<html><body><h1>POST!</h1></body></html>")
 
+
 def run(server_class=HTTPServer, handler_class=S, port=1234):
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
-    print ('Starting httpd...')
+    print('Starting httpd...')
     httpd.serve_forever()
+
 
 if __name__ == "__main__":
     from sys import argv
